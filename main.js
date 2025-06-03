@@ -16,7 +16,7 @@ let frameHandle;
 const gui = new lil.GUI();
 gui.title('Particle Controls');
 gui.addColor(settings, 'color').name('Color');
-gui.add(settings, 'particleCount', 100, 5000).step(100).name('Count').onChange(() => {
+gui.add(settings, 'particleCount', 100, 20000).step(100).name('Count').onChange(() => {
   rebuildParticles();
 });
 gui.add(settings, 'showUI').name('Show/Hide').onChange(v => v ? gui.show() : gui.hide());
