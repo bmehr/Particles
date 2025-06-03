@@ -53,6 +53,12 @@ gui.add(settings, 'showUI').name('Show/Hide').onChange((v) => {
   new Float32Array(particleBuffer.getMappedRange()).set(initialParticles);
   particleBuffer.unmap();
 
+  const uniformBufferSize = 4 * 4 + 4; // vec4 color + float size
+const uniformBuffer = device.createBuffer({
+  size: 32,
+  usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+});
+
   // Load shaders
   const computeShaderModule = await fetch('shaders/compute.wgsl').then(res => res.text());
   const vertexShaderModule = await fetch('shaders/vertex.wgsl').then(res => res.text());
@@ -71,15 +77,20 @@ gui.add(settings, 'showUI').name('Show/Hide').onChange((v) => {
     ],
   });
 
-  const renderBindGroupLayout = device.createBindGroupLayout({
-    entries: [
-      {
-        binding: 0,
-        visibility: GPUShaderStage.VERTEX,
-        buffer: { type: "read-only-storage" },
-      },
-    ],
-  });
+ const renderBindGroupLayout = device.createBindGroupLayout({
+  entries: [
+    {
+      binding: 0,
+      visibility: GPUShaderStage.VERTEX,
+      buffer: { type: "read-only-storage" },
+    },
+    {
+      binding: 1,
+      visibility: GPUShaderStage.VERTEX,
+      buffer: { type: "uniform" },
+    },
+  ],
+});
 
   const computeBindGroup = device.createBindGroup({
     layout: computeBindGroupLayout,
@@ -89,11 +100,12 @@ gui.add(settings, 'showUI').name('Show/Hide').onChange((v) => {
   });
 
   const renderBindGroup = device.createBindGroup({
-    layout: renderBindGroupLayout,
-    entries: [
-      { binding: 0, resource: { buffer: particleBuffer } },
-    ],
-  });
+  layout: renderBindGroupLayout,
+  entries: [
+    { binding: 0, resource: { buffer: particleBuffer } },
+    { binding: 1, resource: { buffer: uniformBuffer } },
+  ],
+});
 
   const computePipeline = device.createComputePipeline({
     layout: device.createPipelineLayout({ bindGroupLayouts: [computeBindGroupLayout] }),
@@ -118,9 +130,26 @@ gui.add(settings, 'showUI').name('Show/Hide').onChange((v) => {
       topology: "point-list",
     },
   });
+  
 
   function frame() {
     const commandEncoder = device.createCommandEncoder();
+    
+    const color = hexToRGB(settings.color);
+    const uniformData = new Float32Array([
+    color.r, color.g, color.b, 1.0, // color vec4
+    settings.particleSize,         // pointSize
+]);
+device.queue.writeBuffer(uniformBuffer, 0, uniformData.buffer);
+    
+    function hexToRGB(hex) {
+    const num = parseInt(hex.slice(1), 16);
+    return {
+    r: ((num >> 16) & 255) / 255,
+    g: ((num >> 8) & 255) / 255,
+    b: (num & 255) / 255,
+  };
+}
 
     // Compute pass
     const computePass = commandEncoder.beginComputePass();
