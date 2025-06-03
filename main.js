@@ -17,6 +17,24 @@ async function initWebGPU() {
     alphaMode: "opaque",
   });
 
+  const settings = {
+  color: '#ffff00',      // yellow default
+  particleSize: 1,
+  particleCount: 1000,
+  showUI: true,
+};
+
+const gui = new lil.GUI();
+gui.title('Particle Controls');
+
+gui.addColor(settings, 'color').name('Color');
+gui.add(settings, 'particleSize', 1, 10).step(1).name('Size');
+gui.add(settings, 'particleCount', 100, 5000).step(100).name('Count');
+gui.add(settings, 'showUI').name('Show/Hide').onChange((v) => {
+  v ? gui.show() : gui.hide();
+});
+
+
   const initialParticles = new Float32Array(PARTICLE_COUNT * 4);
   for (let i = 0; i < PARTICLE_COUNT; i++) {
     const i4 = i * 4;
