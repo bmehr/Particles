@@ -138,7 +138,6 @@ const uniformBuffer = device.createBuffer({
     const color = hexToRGB(settings.color);
     const uniformData = new Float32Array([
     color.r, color.g, color.b, 1.0, // color vec4
-    settings.particleSize,         // pointSize
 ]);
 device.queue.writeBuffer(uniformBuffer, 0, uniformData.buffer);
     
