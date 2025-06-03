@@ -1,59 +1,37 @@
-const PARTICLE_COUNT = 1000;
-const PARTICLE_SIZE = 4 * 4;
-
-let computeBindGroupLayout;
-let renderBindGroupLayout;
-let uniformBuffer;
-
-
-async function initWebGPU() {
-  const canvas = document.getElementById("webgpu-canvas");
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-
-  const adapter = await navigator.gpu.requestAdapter();
-  const device = await adapter.requestDevice();
-  const context = canvas.getContext("webgpu");
-  const format = navigator.gpu.getPreferredCanvasFormat();
-
-  context.configure({
-    device,
-    format,
-    alphaMode: "opaque",
-  });
-
-  const settings = {
-  color: '#ffff00',      // yellow default
-  particleSize: 1,
+const settings = {
+  color: '#ffff00',
   particleCount: 1000,
   showUI: true,
 };
 
+let device, context, format;
+let computePipeline, renderPipeline;
+let computeBindGroupLayout, renderBindGroupLayout;
+let computeBindGroup, renderBindGroup;
+let uniformBuffer;
+let particleBuffer;
+let frameHandle;
+
+// GUI Setup
 const gui = new lil.GUI();
 gui.title('Particle Controls');
-
 gui.addColor(settings, 'color').name('Color');
-gui.add(settings, 'particleSize', 1, 10).step(1).name('Size');
-gui.add(settings, 'particleCount', 100, 5000).step(100).name('Count');
-gui.add(settings, 'showUI').name('Show/Hide').onChange((v) => {
-  v ? gui.show() : gui.hide();
-});
-  
-let currentParticleCount = settings.particleCount;
-
 gui.add(settings, 'particleCount', 100, 5000).step(100).name('Count').onChange(() => {
-  if (settings.particleCount !== currentParticleCount) {
-    currentParticleCount = settings.particleCount;
-    rebuildParticles(); // 🔧 we’ll define this next
-  }
+  rebuildParticles();
 });
+gui.add(settings, 'showUI').name('Show/Hide').onChange(v => v ? gui.show() : gui.hide());
 
-let frameHandle;
-let computeBindGroup, renderBindGroup;
-let particleBuffer;
+function hexToRGB(hex) {
+  const num = parseInt(hex.slice(1), 16);
+  return {
+    r: ((num >> 16) & 255) / 255,
+    g: ((num >> 8) & 255) / 255,
+    b: (num & 255) / 255,
+  };
+}
 
 function rebuildParticles() {
-  if (frameHandle) cancelAnimationFrame(frameHandle); // stop old loop
+  if (frameHandle) cancelAnimationFrame(frameHandle);
 
   const particleData = new Float32Array(settings.particleCount * 4);
   for (let i = 0; i < settings.particleCount; i++) {
@@ -85,23 +63,20 @@ function rebuildParticles() {
       { binding: 1, resource: { buffer: uniformBuffer } },
     ],
   });
-function rebuildParticles() {
+
   function frame() {
     const commandEncoder = device.createCommandEncoder();
 
-    // update uniforms
     const color = hexToRGB(settings.color);
     const uniformData = new Float32Array([color.r, color.g, color.b, 1.0]);
     device.queue.writeBuffer(uniformBuffer, 0, uniformData.buffer);
 
-    // compute pass
     const computePass = commandEncoder.beginComputePass();
     computePass.setPipeline(computePipeline);
     computePass.setBindGroup(0, computeBindGroup);
     computePass.dispatchWorkgroups(Math.ceil(settings.particleCount / 64));
     computePass.end();
 
-    // render pass
     const textureView = context.getCurrentTexture().createView();
     const renderPass = commandEncoder.beginRenderPass({
       colorAttachments: [{
@@ -124,8 +99,57 @@ function rebuildParticles() {
   frameHandle = requestAnimationFrame(frame);
 }
 
-rebuildParticles();
+async function initWebGPU() {
+  const canvas = document.getElementById("webgpu-canvas");
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  const adapter = await navigator.gpu.requestAdapter();
+  device = await adapter.requestDevice();
+  context = canvas.getContext("webgpu");
+  format = navigator.gpu.getPreferredCanvasFormat();
+
+  context.configure({
+    device,
+    format,
+    alphaMode: "opaque",
+  });
+
+  const computeCode = await fetch('shaders/compute.wgsl').then(r => r.text());
+  const vertexCode = await fetch('shaders/vertex.wgsl').then(r => r.text());
+
+  const computeModule = device.createShaderModule({ code: computeCode });
+  const vertexModule = device.createShaderModule({ code: vertexCode });
+
+  computeBindGroupLayout = device.createBindGroupLayout({
+    entries: [{ binding: 0, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'storage' } }],
+  });
+
+  renderBindGroupLayout = device.createBindGroupLayout({
+    entries: [
+      { binding: 0, visibility: GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } },
+      { binding: 1, visibility: GPUShaderStage.VERTEX, buffer: { type: 'uniform' } },
+    ],
+  });
+
+  uniformBuffer = device.createBuffer({
+    size: 16,
+    usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+  });
+
+  computePipeline = device.createComputePipeline({
+    layout: device.createPipelineLayout({ bindGroupLayouts: [computeBindGroupLayout] }),
+    compute: { module: computeModule, entryPoint: "main" },
+  });
+
+  renderPipeline = device.createRenderPipeline({
+    layout: device.createPipelineLayout({ bindGroupLayouts: [renderBindGroupLayout] }),
+    vertex: { module: vertexModule, entryPoint: "main" },
+    fragment: { module: vertexModule, entryPoint: "fs_main", targets: [{ format }] },
+    primitive: { topology: "point-list" },
+  });
+
+  rebuildParticles();
 }
+
 initWebGPU();
-
-
