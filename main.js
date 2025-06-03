@@ -1,5 +1,5 @@
 const PARTICLE_COUNT = 1000;
-const PARTICLE_SIZE = 4 * 4; // vec2 pos + vec2 vel = 4 floats per particle
+const PARTICLE_SIZE = 4 * 4;
 
 async function initWebGPU() {
   const canvas = document.getElementById("webgpu-canvas");
@@ -17,18 +17,18 @@ async function initWebGPU() {
     alphaMode: "opaque",
   });
 
-  // Create particle data
   const initialParticles = new Float32Array(PARTICLE_COUNT * 4);
   for (let i = 0; i < PARTICLE_COUNT; i++) {
     const i4 = i * 4;
-    initialParticles[i4 + 0] = Math.random() * 2 - 1; // pos.x
-    initialParticles[i4 + 1] = Math.random() * 2 - 1; // pos.y
-    initialParticles[i4 + 2] = (Math.random() - 0.5) * 0.01; // vel.x
-    initialParticles[i4 + 3] = (Math.random() - 0.5) * 0.01; // vel.y
+    initialParticles[i4 + 0] = Math.random() * 2 - 1;
+    initialParticles[i4 + 1] = Math.random() * 2 - 1;
+    initialParticles[i4 + 2] = (Math.random() - 0.5) * 0.01;
+    initialParticles[i4 + 3] = (Math.random() - 0.5) * 0.01;
   }
 
+  const bufferSize = Math.ceil(initialParticles.byteLength / 16) * 16;
   const particleBuffer = device.createBuffer({
-    size: initialParticles.byteLength,
+    size: bufferSize,
     usage: GPUBufferUsage.STORAGE | GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
     mappedAtCreation: true,
   });
@@ -42,21 +42,43 @@ async function initWebGPU() {
   const computeModule = device.createShaderModule({ code: computeShaderModule });
   const vertexModule = device.createShaderModule({ code: vertexShaderModule });
 
-  const bindGroupLayout = device.createBindGroupLayout({
+  // Separate bind group layouts
+  const computeBindGroupLayout = device.createBindGroupLayout({
     entries: [
-      { binding: 0, visibility: GPUShaderStage.COMPUTE | GPUShaderStage.VERTEX, buffer: { type: "storage" } },
+      {
+        binding: 0,
+        visibility: GPUShaderStage.COMPUTE,
+        buffer: { type: "storage" },
+      },
     ],
   });
 
-  const bindGroup = device.createBindGroup({
-    layout: bindGroupLayout,
+  const renderBindGroupLayout = device.createBindGroupLayout({
+    entries: [
+      {
+        binding: 0,
+        visibility: GPUShaderStage.VERTEX,
+        buffer: { type: "read-only-storage" },
+      },
+    ],
+  });
+
+  const computeBindGroup = device.createBindGroup({
+    layout: computeBindGroupLayout,
+    entries: [
+      { binding: 0, resource: { buffer: particleBuffer } },
+    ],
+  });
+
+  const renderBindGroup = device.createBindGroup({
+    layout: renderBindGroupLayout,
     entries: [
       { binding: 0, resource: { buffer: particleBuffer } },
     ],
   });
 
   const computePipeline = device.createComputePipeline({
-    layout: device.createPipelineLayout({ bindGroupLayouts: [bindGroupLayout] }),
+    layout: device.createPipelineLayout({ bindGroupLayouts: [computeBindGroupLayout] }),
     compute: {
       module: computeModule,
       entryPoint: "main",
@@ -64,7 +86,7 @@ async function initWebGPU() {
   });
 
   const renderPipeline = device.createRenderPipeline({
-    layout: device.createPipelineLayout({ bindGroupLayouts: [bindGroupLayout] }),
+    layout: device.createPipelineLayout({ bindGroupLayouts: [renderBindGroupLayout] }),
     vertex: {
       module: vertexModule,
       entryPoint: "main",
@@ -85,7 +107,7 @@ async function initWebGPU() {
     // Compute pass
     const computePass = commandEncoder.beginComputePass();
     computePass.setPipeline(computePipeline);
-    computePass.setBindGroup(0, bindGroup);
+    computePass.setBindGroup(0, computeBindGroup);
     computePass.dispatchWorkgroups(Math.ceil(PARTICLE_COUNT / 64));
     computePass.end();
 
@@ -101,7 +123,7 @@ async function initWebGPU() {
     });
 
     renderPass.setPipeline(renderPipeline);
-    renderPass.setBindGroup(0, bindGroup);
+    renderPass.setBindGroup(0, renderBindGroup);
     renderPass.draw(PARTICLE_COUNT);
     renderPass.end();
 
@@ -113,4 +135,5 @@ async function initWebGPU() {
 }
 
 initWebGPU();
+
 
