@@ -1,5 +1,5 @@
-const PARTICLE_COUNT = 4000;
-const PARTICLE_SIZE = 8 * 8;
+const PARTICLE_COUNT = 1000;
+const PARTICLE_SIZE = 4 * 4;
 
 async function initWebGPU() {
   const canvas = document.getElementById("webgpu-canvas");
@@ -55,7 +55,7 @@ gui.add(settings, 'showUI').name('Show/Hide').onChange((v) => {
 
   const uniformBufferSize = 4 * 4 + 4; // vec4 color + float size
 const uniformBuffer = device.createBuffer({
-  size: 32,
+  size: 16,
   usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
 });
 
