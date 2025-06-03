@@ -15,6 +15,7 @@ struct Uniforms {
 
 struct VertexOutput {
   @builtin(position) position : vec4<f32>,
+  @builtin(point_size) pointSize : f32,
   @location(0) color : vec4<f32>,
 };
 
@@ -22,8 +23,8 @@ struct VertexOutput {
 fn main(@builtin(vertex_index) vertexIndex : u32) -> VertexOutput {
   var out : VertexOutput;
   let pos = particles[vertexIndex].pos;
-  out.position = vec4<f32>(pos, 0.0, 1.0);
-  out.color = vec4<f32>(1.0, 1.0, 0.0, 1.0); // yellow particles
+  out.pointSize = uniforms.pointSize;
+  out.color = uniforms.color;
   return out;
 }
 
