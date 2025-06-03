@@ -85,7 +85,7 @@ function rebuildParticles() {
       { binding: 1, resource: { buffer: uniformBuffer } },
     ],
   });
-function rebuildParticles()
+function rebuildParticles() [
   function frame() {
     const commandEncoder = device.createCommandEncoder();
 
