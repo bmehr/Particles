@@ -3,11 +3,8 @@ struct Particle {
   vel : vec2<f32>,
 };
 
-@group(0) @binding(0) var<storage, read> particles : array<Particle>;
-
 struct Uniforms {
   color: vec4<f32>,
-  pointSize: f32,
 };
 
 @group(0) @binding(0) var<storage, read> particles : array<Particle>;
