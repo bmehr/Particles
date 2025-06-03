@@ -1,5 +1,5 @@
-const PARTICLE_COUNT = 1500;
-const PARTICLE_SIZE = 5 * 5;
+const PARTICLE_COUNT = 2000;
+const PARTICLE_SIZE = 8 * 8;
 
 async function initWebGPU() {
   const canvas = document.getElementById("webgpu-canvas");
