@@ -33,131 +33,70 @@ gui.add(settings, 'particleCount', 100, 5000).step(100).name('Count');
 gui.add(settings, 'showUI').name('Show/Hide').onChange((v) => {
   v ? gui.show() : gui.hide();
 });
+  
+let currentParticleCount = settings.particleCount;
 
+gui.add(settings, 'particleCount', 100, 5000).step(100).name('Count').onChange(() => {
+  if (settings.particleCount !== currentParticleCount) {
+    currentParticleCount = settings.particleCount;
+    rebuildParticles(); // 🔧 we’ll define this next
+  }
+});
 
-  const initialParticles = new Float32Array(PARTICLE_COUNT * 4);
-  for (let i = 0; i < PARTICLE_COUNT; i++) {
+let frameHandle;
+let computeBindGroup, renderBindGroup;
+let particleBuffer;
+
+function rebuildParticles() {
+  if (frameHandle) cancelAnimationFrame(frameHandle); // stop old loop
+
+  const particleData = new Float32Array(settings.particleCount * 4);
+  for (let i = 0; i < settings.particleCount; i++) {
     const i4 = i * 4;
-    initialParticles[i4 + 0] = Math.random() * 2 - 1;
-    initialParticles[i4 + 1] = Math.random() * 2 - 1;
-    initialParticles[i4 + 2] = (Math.random() - 0.5) * 0.01;
-    initialParticles[i4 + 3] = (Math.random() - 0.5) * 0.01;
+    particleData[i4 + 0] = Math.random() * 2 - 1;
+    particleData[i4 + 1] = Math.random() * 2 - 1;
+    particleData[i4 + 2] = (Math.random() - 0.5) * 0.01;
+    particleData[i4 + 3] = (Math.random() - 0.5) * 0.01;
   }
 
-  const bufferSize = Math.ceil(initialParticles.byteLength / 16) * 16;
-  const particleBuffer = device.createBuffer({
+  const bufferSize = Math.ceil(particleData.byteLength / 16) * 16;
+  particleBuffer = device.createBuffer({
     size: bufferSize,
     usage: GPUBufferUsage.STORAGE | GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
     mappedAtCreation: true,
   });
-  new Float32Array(particleBuffer.getMappedRange()).set(initialParticles);
+  new Float32Array(particleBuffer.getMappedRange()).set(particleData);
   particleBuffer.unmap();
 
-  const uniformBufferSize = 4 * 4 + 4; // vec4 color + float size
-const uniformBuffer = device.createBuffer({
-  size: 16,
-  usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-});
-
-  // Load shaders
-  const computeShaderModule = await fetch('shaders/compute.wgsl').then(res => res.text());
-  const vertexShaderModule = await fetch('shaders/vertex.wgsl').then(res => res.text());
-
-  const computeModule = device.createShaderModule({ code: computeShaderModule });
-  const vertexModule = device.createShaderModule({ code: vertexShaderModule });
-
-  // Separate bind group layouts
-  const computeBindGroupLayout = device.createBindGroupLayout({
-    entries: [
-      {
-        binding: 0,
-        visibility: GPUShaderStage.COMPUTE,
-        buffer: { type: "storage" },
-      },
-    ],
+  computeBindGroup = device.createBindGroup({
+    layout: computeBindGroupLayout,
+    entries: [{ binding: 0, resource: { buffer: particleBuffer } }],
   });
 
- const renderBindGroupLayout = device.createBindGroupLayout({
-  entries: [
-    {
-      binding: 0,
-      visibility: GPUShaderStage.VERTEX,
-      buffer: { type: "read-only-storage" },
-    },
-    {
-      binding: 1,
-      visibility: GPUShaderStage.VERTEX,
-      buffer: { type: "uniform" },
-    },
-  ],
-});
-
-  const computeBindGroup = device.createBindGroup({
-    layout: computeBindGroupLayout,
+  renderBindGroup = device.createBindGroup({
+    layout: renderBindGroupLayout,
     entries: [
       { binding: 0, resource: { buffer: particleBuffer } },
+      { binding: 1, resource: { buffer: uniformBuffer } },
     ],
   });
-
-  const renderBindGroup = device.createBindGroup({
-  layout: renderBindGroupLayout,
-  entries: [
-    { binding: 0, resource: { buffer: particleBuffer } },
-    { binding: 1, resource: { buffer: uniformBuffer } },
-  ],
-});
-
-  const computePipeline = device.createComputePipeline({
-    layout: device.createPipelineLayout({ bindGroupLayouts: [computeBindGroupLayout] }),
-    compute: {
-      module: computeModule,
-      entryPoint: "main",
-    },
-  });
-
-  const renderPipeline = device.createRenderPipeline({
-    layout: device.createPipelineLayout({ bindGroupLayouts: [renderBindGroupLayout] }),
-    vertex: {
-      module: vertexModule,
-      entryPoint: "main",
-    },
-    fragment: {
-      module: vertexModule,
-      entryPoint: "fs_main",
-      targets: [{ format }],
-    },
-    primitive: {
-      topology: "point-list",
-    },
-  });
-  
 
   function frame() {
     const commandEncoder = device.createCommandEncoder();
-    
-    const color = hexToRGB(settings.color);
-    const uniformData = new Float32Array([
-    color.r, color.g, color.b, 1.0, // color vec4
-]);
-device.queue.writeBuffer(uniformBuffer, 0, uniformData.buffer);
-    
-    function hexToRGB(hex) {
-    const num = parseInt(hex.slice(1), 16);
-    return {
-    r: ((num >> 16) & 255) / 255,
-    g: ((num >> 8) & 255) / 255,
-    b: (num & 255) / 255,
-  };
-}
 
-    // Compute pass
+    // update uniforms
+    const color = hexToRGB(settings.color);
+    const uniformData = new Float32Array([color.r, color.g, color.b, 1.0]);
+    device.queue.writeBuffer(uniformBuffer, 0, uniformData.buffer);
+
+    // compute pass
     const computePass = commandEncoder.beginComputePass();
     computePass.setPipeline(computePipeline);
     computePass.setBindGroup(0, computeBindGroup);
-    computePass.dispatchWorkgroups(Math.ceil(PARTICLE_COUNT / 64));
+    computePass.dispatchWorkgroups(Math.ceil(settings.particleCount / 64));
     computePass.end();
 
-    // Render pass
+    // render pass
     const textureView = context.getCurrentTexture().createView();
     const renderPass = commandEncoder.beginRenderPass({
       colorAttachments: [{
@@ -170,16 +109,17 @@ device.queue.writeBuffer(uniformBuffer, 0, uniformData.buffer);
 
     renderPass.setPipeline(renderPipeline);
     renderPass.setBindGroup(0, renderBindGroup);
-    renderPass.draw(PARTICLE_COUNT);
+    renderPass.draw(settings.particleCount);
     renderPass.end();
 
     device.queue.submit([commandEncoder.finish()]);
-    requestAnimationFrame(frame);
+    frameHandle = requestAnimationFrame(frame);
   }
 
-  requestAnimationFrame(frame);
+  frameHandle = requestAnimationFrame(frame);
 }
 
+rebuildParticles();
 initWebGPU();
 
 
