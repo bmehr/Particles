@@ -1,6 +1,11 @@
 const PARTICLE_COUNT = 1000;
 const PARTICLE_SIZE = 4 * 4;
 
+let computeBindGroupLayout;
+let renderBindGroupLayout;
+let uniformBuffer;
+
+
 async function initWebGPU() {
   const canvas = document.getElementById("webgpu-canvas");
   canvas.width = window.innerWidth;
