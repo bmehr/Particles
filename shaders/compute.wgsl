@@ -23,7 +23,10 @@ fn main(@builtin(global_invocation_id) id : vec3<u32>) {
   let direction = attractor.pos - particles[index].pos;
   let distance = length(direction) + 0.001;
   let force = normalize(direction) / (distance * distance);
-  particles[index].vel += force * attractor.strength;
+  particles[index].vel += vec2<f32>(0.01, 0.0);
+}
+if (index == 0u) {
+  particles[0].vel = vec2<f32>(0.1, 0.1);
 }
 
   // Update position
