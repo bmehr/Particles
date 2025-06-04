@@ -26,7 +26,7 @@ fn main(@builtin(global_invocation_id) id : vec3<u32>) {
   particles[index].vel += force * attractor.strength;
 
 // ✅ Respawn particle if it's too close
-  if ((index % 100u) == u32(floor(f32(global_invocation_id.y)))) {
+  if ((index % 100u) == 0u) {
   particles[index].pos = vec2<f32>(0.0, 0.0);
   particles[index].vel = vec2<f32>(
     sin(f32(index)) * 0.01,
