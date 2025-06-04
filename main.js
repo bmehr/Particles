@@ -1,9 +1,9 @@
 const settings = {
   color: '#ffff00',
   particleCount: 1000,
-  showUI: true,
   attractorStrength: 0.002,
   attractorEnabled: true,
+  showUI: true,
 };
 
 let device, context, format;
