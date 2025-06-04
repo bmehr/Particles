@@ -192,3 +192,5 @@ function updateAttractorFromEvent(e) {
 
 window.addEventListener('mousemove', updateAttractorFromEvent);
 window.addEventListener('touchmove', updateAttractorFromEvent);
+console.log(attractorPosition);
+console.log(settings.attractorStrength, settings.attractorEnabled);
