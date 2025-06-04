@@ -26,7 +26,7 @@ fn main(@builtin(global_invocation_id) id : vec3<u32>) {
   particles[index].vel += force * attractor.strength;
 
 // ✅ Respawn particle if it's too close
-  if (dist < 0.03) {
+  if (dist < 0.01) {
     particles[index].pos = vec2<f32>(0.0, 0.0);
     // Add a basic pseudo-random velocity using index (GPU-safe)
     particles[index].vel = vec2<f32>(
