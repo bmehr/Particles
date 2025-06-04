@@ -23,8 +23,9 @@ gui.addColor(settings, 'color').name('Color');
 gui.add(settings, 'particleCount', 100, 20000).step(100).name('Count').onChange(() => {
   rebuildParticles();
 });
-gui.add(settings, 'attractorStrength', 0.0, 0.01).step(0.0001).name('Attractor Strength');
+onst gui = new dat.GUI();
 gui.add(settings, 'attractorEnabled').name('Enable Attractor');
+gui.add(settings, 'attractorStrength', 0.0, 0.01).step(0.0001).name('Attractor Strength');
 gui.add(settings, 'showUI').name('Show/Hide').onChange(v => v ? gui.show() : gui.hide());
 
 function hexToRGB(hex) {
@@ -75,10 +76,6 @@ function rebuildParticles() {
 
   function frame() {
     const commandEncoder = device.createCommandEncoder();
-
-    const buffer = new ArrayBuffer(16); // 4 floats total
-const floatView = new Float32Array(buffer);
-const uintView = new Uint32Array(buffer);
 
 floatView[0] = attractorPosition.x;
 floatView[1] = attractorPosition.y;
