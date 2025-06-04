@@ -80,8 +80,8 @@ function rebuildParticles() {
     attractorBuffer,
     0,
     new Float32Array([
-    attractorPosition.x = 0,
-    attractorPosition.y = 0,
+    attractorPosition.x,
+    attractorPosition.y,
     settings.attractorStrength,
     settings.attractorEnabled ? 1 : 0
   ])
