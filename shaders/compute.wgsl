@@ -26,6 +26,15 @@ fn main(@builtin(global_invocation_id) id : vec3<u32>) {
   particles[index].vel += force * attractor.strength;
 }
 
+// Respawn logic: if very close to attractor, reset
+if (distance < 0.05) {
+  particles[index].pos = vec2<f32>(0.0, 0.0);
+  particles[index].vel = vec2<f32>(
+    (f32(index % 4u) - 2.0) * 0.005,
+    (f32((index / 4u) % 4u) - 2.0) * 0.005
+  );
+}
+
   // Update position
   particles[index].pos += particles[index].vel;
 
