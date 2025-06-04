@@ -79,7 +79,12 @@ function rebuildParticles() {
     device.queue.writeBuffer(
     attractorBuffer,
     0,
-    new Float32Array([attractorPosition.x, attractorPosition.y])
+    new Float32Array([
+    attractorPosition.x,
+    attractorPosition.y,
+    settings.attractorStrength,
+    settings.attractorEnabled ? 1 : 0
+  ])
   );
 
     const color = hexToRGB(settings.color);
@@ -154,6 +159,11 @@ async function initWebGPU() {
     size: 16,
     usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
   });
+
+  attractorBuffer = device.createBuffer({
+  size: 16, // 4 floats * 4 bytes
+  usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+});
 
   computePipeline = device.createComputePipeline({
     layout: device.createPipelineLayout({ bindGroupLayouts: [computeBindGroupLayout] }),
