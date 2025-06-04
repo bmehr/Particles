@@ -188,10 +188,11 @@ function updateAttractorFromEvent(e) {
   const y = (e.clientY ?? e.touches?.[0]?.clientY ?? 0) / window.innerHeight;
   attractorPosition.x = x * 2 - 1;
   attractorPosition.y = -(y * 2 - 1);
+  console.log("Mouse moved to", attractorPosition.x, attractorPosition.y);
 }
 
 window.addEventListener('mousemove', updateAttractorFromEvent);
 window.addEventListener('touchmove', updateAttractorFromEvent);
 console.log(attractorPosition);
 console.log(settings.attractorStrength, settings.attractorEnabled);
-console.log("Mouse moved to", attractorPosition.x, attractorPosition.y);
+
