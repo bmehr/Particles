@@ -80,8 +80,8 @@ function rebuildParticles() {
     attractorBuffer,
     0,
     new Float32Array([
-    attractorPosition.x,
-    attractorPosition.y,
+    attractorPosition.x = 0,
+    attractorPosition.y = 0,
     settings.attractorStrength,
     settings.attractorEnabled ? 1 : 0
   ])
@@ -194,3 +194,4 @@ window.addEventListener('mousemove', updateAttractorFromEvent);
 window.addEventListener('touchmove', updateAttractorFromEvent);
 console.log(attractorPosition);
 console.log(settings.attractorStrength, settings.attractorEnabled);
+console.log("Mouse moved to", attractorPosition.x, attractorPosition.y);
