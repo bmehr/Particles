@@ -24,15 +24,16 @@ fn main(@builtin(global_invocation_id) id : vec3<u32>) {
   let distance = length(direction) + 0.001;
   let force = normalize(direction) / (distance * distance);
   particles[index].vel += force * attractor.strength;
-}
 
-// Respawn logic: if very close to attractor, reset
-if (distance < 0.05) {
-  particles[index].pos = vec2<f32>(0.0, 0.0);
-  particles[index].vel = vec2<f32>(
-    (f32(index % 4u) - 2.0) * 0.005,
-    (f32((index / 4u) % 4u) - 2.0) * 0.005
-  );
+// ✅ Respawn particle if it's too close
+  if (distance < 0.03) {
+    particles[index].pos = vec2<f32>(0.0, 0.0);
+    // Add a basic pseudo-random velocity using index (GPU-safe)
+    particles[index].vel = vec2<f32>(
+      sin(f32(index)) * 0.01,
+      cos(f32(index * 17u)) * 0.01
+    );
+  }
 }
 
   // Update position
