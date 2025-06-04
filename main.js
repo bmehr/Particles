@@ -75,24 +75,17 @@ function rebuildParticles() {
 
   function frame() {
     const commandEncoder = device.createCommandEncoder();
+    
+    const buffer = new ArrayBuffer(16);
+    const floatView = new Float32Array(buffer);
+    const uintView = new Uint32Array(buffer);
 
 floatView[0] = attractorPosition.x;
 floatView[1] = attractorPosition.y;
 floatView[2] = settings.attractorStrength;
-uintView[3]  = settings.attractorEnabled ? 1 : 0;
+uintView[3] = settings.attractorEnabled ? 1 : 0;
 
 device.queue.writeBuffer(attractorBuffer, 0, buffer);
-
-    device.queue.writeBuffer(
-    attractorBuffer,
-    0,
-    new Float32Array([
-    attractorPosition.x,
-    attractorPosition.y,
-    settings.attractorStrength,
-    settings.attractorEnabled ? 1 : 0
-  ])
-  );
 
     const color = hexToRGB(settings.color);
     const uniformData = new Float32Array([color.r, color.g, color.b, 1.0]);
