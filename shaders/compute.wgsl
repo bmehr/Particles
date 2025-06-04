@@ -21,12 +21,12 @@ fn main(@builtin(global_invocation_id) id : vec3<u32>) {
  // Attraction force toward the attractor position and strength
  if (attractor.enabled == 1u) {
   let direction = attractor.pos - particles[index].pos;
-  let distance = length(direction) + 0.001;
-  let force = normalize(direction) / (distance * distance);
+  let dist = length(direction) + 0.001;
+  let force = normalize(direction) / (dist * dist);
   particles[index].vel += force * attractor.strength;
 
 // ✅ Respawn particle if it's too close
-  if (distance < 0.03) {
+  if (dist < 0.03) {
     particles[index].pos = vec2<f32>(0.0, 0.0);
     // Add a basic pseudo-random velocity using index (GPU-safe)
     particles[index].vel = vec2<f32>(
