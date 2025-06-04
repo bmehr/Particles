@@ -2,6 +2,8 @@ const settings = {
   color: '#ffff00',
   particleCount: 1000,
   showUI: true,
+  attractorStrength: 0.002,
+  attractorEnabled: true,
 };
 
 let device, context, format;
@@ -22,6 +24,8 @@ gui.add(settings, 'particleCount', 100, 20000).step(100).name('Count').onChange(
   rebuildParticles();
 });
 gui.add(settings, 'showUI').name('Show/Hide').onChange(v => v ? gui.show() : gui.hide());
+gui.add(settings, 'attractorStrength', 0.0, 0.01).step(0.0001).name('Attractor Strength');
+gui.add(settings, 'attractorEnabled').name('Enable Attractor');
 
 function hexToRGB(hex) {
   const num = parseInt(hex.slice(1), 16);
