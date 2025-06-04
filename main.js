@@ -11,6 +11,8 @@ let computeBindGroup, renderBindGroup;
 let uniformBuffer;
 let particleBuffer;
 let frameHandle;
+let attractorBuffer;
+let attractorPosition = { x: 0, y: 0 };
 
 // GUI Setup
 const gui = new lil.GUI();
@@ -53,8 +55,11 @@ function rebuildParticles() {
 
   computeBindGroup = device.createBindGroup({
     layout: computeBindGroupLayout,
-    entries: [{ binding: 0, resource: { buffer: particleBuffer } }],
-  });
+    entries: [
+    { binding: 0, resource: { buffer: particleBuffer } },
+    { binding: 1, resource: { buffer: attractorBuffer } },
+  ],
+});
 
   renderBindGroup = device.createBindGroup({
     layout: renderBindGroupLayout,
@@ -66,6 +71,12 @@ function rebuildParticles() {
 
   function frame() {
     const commandEncoder = device.createCommandEncoder();
+
+    device.queue.writeBuffer(
+    attractorBuffer,
+    0,
+    new Float32Array([attractorPosition.x, attractorPosition.y])
+  );
 
     const color = hexToRGB(settings.color);
     const uniformData = new Float32Array([color.r, color.g, color.b, 1.0]);
@@ -122,8 +133,11 @@ async function initWebGPU() {
   const vertexModule = device.createShaderModule({ code: vertexCode });
 
   computeBindGroupLayout = device.createBindGroupLayout({
-    entries: [{ binding: 0, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'storage' } }],
-  });
+    entries: [
+    { binding: 0, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'storage' } },
+    { binding: 1, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'uniform' } },
+  ],
+});
 
   renderBindGroupLayout = device.createBindGroupLayout({
     entries: [
@@ -149,7 +163,22 @@ async function initWebGPU() {
     primitive: { topology: "point-list" },
   });
 
+  attractorBuffer = device.createBuffer({
+  size: 8,
+  usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+});
+
   rebuildParticles();
 }
 
 initWebGPU();
+
+function updateAttractorFromEvent(e) {
+  const x = (e.clientX ?? e.touches?.[0]?.clientX ?? 0) / window.innerWidth;
+  const y = (e.clientY ?? e.touches?.[0]?.clientY ?? 0) / window.innerHeight;
+  attractorPosition.x = x * 2 - 1;
+  attractorPosition.y = -(y * 2 - 1);
+}
+
+window.addEventListener('mousemove', updateAttractorFromEvent);
+window.addEventListener('touchmove', updateAttractorFromEvent);
