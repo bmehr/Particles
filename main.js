@@ -177,10 +177,6 @@ async function initWebGPU() {
     primitive: { topology: "point-list" },
   });
 
-  attractorBuffer = device.createBuffer({
-  size: 8,
-  usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-});
 
   rebuildParticles();
 }
