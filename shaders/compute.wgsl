@@ -5,6 +5,8 @@ struct Particle {
 
 struct Attractor {
   pos: vec2<f32>,
+  strength: f32,
+  enabled: u32,
 };
 
 @group(0) @binding(0) var<storage, read_write> particles : array<Particle>;
@@ -16,11 +18,13 @@ fn main(@builtin(global_invocation_id) id : vec3<u32>) {
   if (index >= arrayLength(&particles)) {
     return;
   }
- // Attraction force toward the attractor position
+ // Attraction force toward the attractor position and strength
+ if (attractor.enabled == 1u) {
   let direction = attractor.pos - particles[index].pos;
   let distance = length(direction) + 0.001;
-  let force = normalize(direction) / (distance * distance); // inverse square
-  particles[index].vel += force * 0.002; // tweak strength
+  let force = normalize(direction) / (distance * distance);
+  particles[index].vel += force * attractor.strength;
+}
 
   // Update position
   particles[index].pos += particles[index].vel;
