@@ -2,10 +2,11 @@ const settings = {
   color: '#ffff00',
   particleCount: 3000,
   attractorStrength: 0.0002,
-  attractorEnabled: false,
+  attractorEnabled: true,
   showUI: true,
 };
 
+let canvas, overlay, ctx;
 let device, context, format;
 let computePipeline, renderPipeline;
 let computeBindGroupLayout, renderBindGroupLayout;
@@ -74,18 +75,21 @@ function rebuildParticles() {
   });
 
   function frame() {
-    const commandEncoder = device.createCommandEncoder();
-    
-    const buffer = new ArrayBuffer(16);
-    const floatView = new Float32Array(buffer);
-    const uintView = new Uint32Array(buffer);
+      const commandEncoder = device.createCommandEncoder();
 
-floatView[0] = attractorPosition.x;
-floatView[1] = attractorPosition.y;
-floatView[2] = settings.attractorStrength;
-uintView[3] = settings.attractorEnabled ? 1 : 0;
+      const buffer = new ArrayBuffer(16);
+      const floatView = new Float32Array(buffer);
+      const uintView = new Uint32Array(buffer);
+     
+   
+      floatView[0] = attractorPosition.x;
+      floatView[1] = attractorPosition.y;
+      floatView[2] = settings.attractorStrength;
+      uintView[3] = settings.attractorEnabled ? 1 : 0;
+      
 
-device.queue.writeBuffer(attractorBuffer, 0, buffer);
+      device.queue.writeBuffer(attractorBuffer, 0, buffer);
+     
 
     const color = hexToRGB(settings.color);
     const uniformData = new Float32Array([color.r, color.g, color.b, 1.0]);
@@ -106,23 +110,50 @@ device.queue.writeBuffer(attractorBuffer, 0, buffer);
         clearValue: { r: 0, g: 0, b: 0, a: 1 },
       }],
     });
+      
 
-    renderPass.setPipeline(renderPipeline);
-    renderPass.setBindGroup(0, renderBindGroup);
-    renderPass.draw(settings.particleCount);
-    renderPass.end();
+      renderPass.setPipeline(renderPipeline);
+      renderPass.setBindGroup(0, renderBindGroup);
+      renderPass.draw(settings.particleCount);
+      renderPass.end();
 
-    device.queue.submit([commandEncoder.finish()]);
-    frameHandle = requestAnimationFrame(frame);
-  }
+      device.queue.submit([commandEncoder.finish()]);
+      frameHandle = requestAnimationFrame(frame);
+
+      ctx.clearRect(0, 0, overlay.width, overlay.height);
+      // Fade trail effect
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+      ctx.fillRect(0, 0, overlay.width, overlay.height);
+
+      // Swirl ring effect
+      const cx = (attractorPosition.x * 0.5 + 0.5) * overlay.width;
+      const cy = (-attractorPosition.y * 0.5 + 0.5) * overlay.height;
+      const pulse = Math.sin(performance.now() * 0.005) * 5 + 25;
+
+      ctx.beginPath();
+      ctx.arc(cx, cy, pulse, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(255, 255, 100, 0.3)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+     
+    }
+
+    
 
   frameHandle = requestAnimationFrame(frame);
 }
 
+
 async function initWebGPU() {
-  const canvas = document.getElementById("webgpu-canvas");
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
+    canvas = document.getElementById("webgpu-canvas");
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    overlay = document.getElementById("overlay");
+    ctx = overlay.getContext("2d");
+    overlay.width = window.innerWidth;
+    overlay.height = window.innerHeight;
+
 
   const adapter = await navigator.gpu.requestAdapter();
   device = await adapter.requestDevice();
@@ -177,6 +208,7 @@ async function initWebGPU() {
     primitive: { topology: "point-list" },
   });
 
+   
 
   rebuildParticles();
 }
