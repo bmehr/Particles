@@ -1,3 +1,7 @@
+fn random(seed: f32) -> f32 {
+  return fract(sin(seed) * 43758.5453123);
+}
+
 struct Particle {
   pos : vec2<f32>,
   vel : vec2<f32>,
@@ -18,66 +22,61 @@ fn main(@builtin(global_invocation_id) id : vec3<u32>) {
   if (index >= arrayLength(&particles)) {
     return;
   }
- // Attraction force toward the attractor position and strength
- if (attractor.enabled == 1u) {
-  let toAttractor = attractor.pos - particles[index].pos;
-  let dist = length(toAttractor) + 0.001;
-  let pull = normalize(toAttractor) / (dist * dist);
 
-  // Create tangential (vortex) force — 90 degree rotation of direction
-  let tangent = vec2<f32>(-toAttractor.y, toAttractor.x);
-  let swirl = normalize(tangent) / dist;
+  if (attractor.enabled == 1u) {
+    let toAttractor = attractor.pos - particles[index].pos;
+    let dist = length(toAttractor) + 0.0001;
 
-  // Combine pull + swirl
-  let vortexForce = pull * attractor.strength + swirl * attractor.strength * 0.5;
-  particles[index].vel += vortexForce;
+    // --- Ring parameters ---
+    let desiredRadius = 0.01 + 0.10 * random(f32(index) * 10.0);
+let springK = 0.15;
+let baseTangentialSpeed = 0.025;
 
-  if (dist < 0.01) {
-     // Deflection outward
-     let escape = normalize(toAttractor) * -0.05;
-     particles[index].vel += escape;
+let radialDir = normalize(toAttractor);
+let radialError = dist - desiredRadius;
+let radialForce = radialDir * radialError * springK;
 
-    // Swirl kick
-    // particles[index].vel += swirl * 0.01;
-     particles[index].vel *= 0.98; // Damping
-     
-    // limit max speed
-    let maxSpeed = 0.05;
+let tangent = vec2<f32>(-radialDir.y, radialDir.x);
+// Tangential speed scales with desiredRadius
+let tangentialSpeed = (baseTangentialSpeed + 0.04 * exp(-abs(radialError) * 10.0)) * desiredRadius / 0.3;
+let tangentialForce = tangent * tangentialSpeed;
+
+// Noise scales with radius (less near center)
+let noiseAmount = 0.008 * clamp(desiredRadius / 0.3, 0.2, 1.0);
+let noise = vec2<f32>(
+  random(f32(index) * 1.23 + dist * 100.0) - 0.5,
+  random(f32(index) * 4.56 + dist * 200.0) - 0.5
+) * noiseAmount;
+
+particles[index].vel += radialForce + noise;
+particles[index].vel = tangentialForce + particles[index].vel * 0.97;
+
+    // Optional: limit max speed for stability
+    let maxSpeed = 0.07;
     let speed = length(particles[index].vel);
     if (speed > maxSpeed) {
-    particles[index].vel = normalize(particles[index].vel) * maxSpeed;
-}
-     particles[index].vel += normalize(toAttractor) * 0.0005;
-
+      particles[index].vel = normalize(particles[index].vel) * maxSpeed;
+    }
   }
-
-  if (length(particles[index].vel) < 0.001) {
-  particles[index].vel = vec2<f32>(
-    sin(f32(index)) * 0.005,
-    cos(f32(index) * 11.0) * 0.005
-  );
-}
-
-}
 
   // Update position
   particles[index].pos += particles[index].vel;
 
   // Soft bounce at edges
-if (particles[index].pos.x > 1.0) {
+  if (particles[index].pos.x > 1.0) {
     particles[index].pos.x = 1.0;
-    particles[index].vel.x *= -0.7; // lose some energy
-}
-if (particles[index].pos.x < -1.0) {
+    particles[index].vel.x *= -0.7;
+  }
+  if (particles[index].pos.x < -1.0) {
     particles[index].pos.x = -1.0;
     particles[index].vel.x *= -0.7;
-}
-if (particles[index].pos.y > 1.0) {
+  }
+  if (particles[index].pos.y > 1.0) {
     particles[index].pos.y = 1.0;
     particles[index].vel.y *= -0.7;
-}
-if (particles[index].pos.y < -1.0) {
+  }
+  if (particles[index].pos.y < -1.0) {
     particles[index].pos.y = -1.0;
     particles[index].vel.y *= -0.7;
-}
+  }
 }
