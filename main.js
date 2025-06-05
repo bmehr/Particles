@@ -1,8 +1,8 @@
 const settings = {
   color: '#ffff00',
-  particleCount: 1000,
-  attractorStrength: 0.002,
-  attractorEnabled: true,
+  particleCount: 3000,
+  attractorStrength: 0.0002,
+  attractorEnabled: false,
   showUI: true,
 };
 
