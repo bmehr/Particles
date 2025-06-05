@@ -34,12 +34,19 @@ fn main(@builtin(global_invocation_id) id : vec3<u32>) {
 
   if (dist < 0.01) {
      // Deflection outward
-     let escape = normalize(toAttractor) * -0.03;
+     let escape = normalize(toAttractor) * -0.05;
      particles[index].vel += escape;
 
     // Swirl kick
-     // particles[index].vel += swirl * 0.03;
-     // Keep them moving
+    // particles[index].vel += swirl * 0.01;
+     particles[index].vel *= 0.98; // Damping
+     
+    // limit max speed
+    let maxSpeed = 0.05;
+    let speed = length(particles[index].vel);
+    if (speed > maxSpeed) {
+    particles[index].vel = normalize(particles[index].vel) * maxSpeed;
+}
      particles[index].vel += normalize(toAttractor) * 0.0005;
 
   }
@@ -56,17 +63,21 @@ fn main(@builtin(global_invocation_id) id : vec3<u32>) {
   // Update position
   particles[index].pos += particles[index].vel;
 
-  // Wrap around screen bounds
-  if (particles[index].pos.x > 1.0) {
-    particles[index].pos.x = -1.0;
-  }
-  if (particles[index].pos.x < -1.0) {
+  // Soft bounce at edges
+if (particles[index].pos.x > 1.0) {
     particles[index].pos.x = 1.0;
-  }
-  if (particles[index].pos.y > 1.0) {
-    particles[index].pos.y = -1.0;
-  }
-  if (particles[index].pos.y < -1.0) {
+    particles[index].vel.x *= -0.7; // lose some energy
+}
+if (particles[index].pos.x < -1.0) {
+    particles[index].pos.x = -1.0;
+    particles[index].vel.x *= -0.7;
+}
+if (particles[index].pos.y > 1.0) {
     particles[index].pos.y = 1.0;
-  }
+    particles[index].vel.y *= -0.7;
+}
+if (particles[index].pos.y < -1.0) {
+    particles[index].pos.y = -1.0;
+    particles[index].vel.y *= -0.7;
+}
 }
