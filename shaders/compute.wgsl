@@ -42,7 +42,6 @@ fn main(@builtin(global_invocation_id) id : vec3<u32>) {
      // Keep them moving
      particles[index].vel += normalize(toAttractor) * 0.0005;
 
-     particles[index].vel += normalize(toAttractor) * 0.0005;
   }
 
   if (length(particles[index].vel) < 0.001) {
