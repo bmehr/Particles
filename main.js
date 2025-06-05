@@ -21,7 +21,7 @@ let attractorPosition = { x: 0, y: 0 };
 const gui = new lil.GUI();
 gui.title('Particle Controls');
 gui.addColor(settings, 'color').name('Color');
-gui.add(settings, 'particleCount', 100, 20000).step(100).name('Count').onChange(() => {
+gui.add(settings, 'particleCount', 100, 200000).step(100).name('Count').onChange(() => {
   rebuildParticles();
 });
 gui.add(settings, 'attractorEnabled').name('Enable Attractor');
@@ -122,7 +122,7 @@ function rebuildParticles() {
 
       ctx.clearRect(0, 0, overlay.width, overlay.height);
       // Fade trail effect
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
       ctx.fillRect(0, 0, overlay.width, overlay.height);
 
       // Swirl ring effect
