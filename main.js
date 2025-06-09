@@ -1,8 +1,16 @@
+function randomLightColorHex() {
+    // Generate light color: each channel between 180 and 255
+    const r = Math.floor(180 + Math.random() * 75);
+    const g = Math.floor(180 + Math.random() * 75);
+    const b = Math.floor(180 + Math.random() * 75);
+    return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+}
+
 const settings = {
-    color: '#ffff00',
-    particleCount: 3000,
+    color: randomLightColorHex() ,
+    particleCount: 10000,
     attractorStrength: 0.0002,
-    attractorEnabled: true,
+    attractorEnabled: false,
     showUI: true,
 };
 
@@ -25,8 +33,29 @@ gui.add(settings, 'particleCount', 100, 200000).step(100).name('Count').onChange
     rebuildParticles();
 });
 gui.add(settings, 'attractorEnabled').name('Enable Attractor');
-gui.add(settings, 'attractorStrength', 0.00001, 0.01).step(0.00001).name('Attractor Strength');
-gui.add(settings, 'showUI').name('Show/Hide').onChange(v => v ? gui.show() : gui.hide());
+// gui.add(settings, 'attractorStrength', 0.00001, 0.01).step(0.00001).name('Attractor Strength');
+// gui.add(settings, 'showUI').name('Show/Hide').onChange(v => v ? gui.show() : gui.hide());
+
+function resizeCanvases() {
+    const width = document.body.clientWidth;
+    const height = document.body.clientHeight;
+    canvas.width = width;
+    canvas.height = height;
+    overlay.width = width;
+    overlay.height = height;
+}
+
+const resizeObserver = new ResizeObserver(() => {
+    resizeCanvases();
+    if (context && device && format) {
+        context.configure({
+            device,
+            format,
+            alphaMode: "opaque",
+        });
+    }
+});
+resizeObserver.observe(document.body);
 
 function hexToRGB(hex) {
     const num = parseInt(hex.slice(1), 16);

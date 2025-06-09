@@ -1,11 +1,35 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
+<head>
     <meta charset="UTF-8" />
     <title>WebGPU Particles</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lil-gui@0.19/dist/lil-gui.min.css">
     <script src="https://cdn.jsdelivr.net/npm/lil-gui@0.19"></script>
-  </head>
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        body {
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+            position: relative;
+        }
+
+        #webgpu-canvas, #overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+    </style>
+</head>
   <body>
       <canvas id="overlay" style="position:absolute; top:0; left:0; pointer-events:none; z-index:10;"></canvas>
       <canvas id="webgpu-canvas"></canvas>
