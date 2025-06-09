@@ -28,6 +28,7 @@ let particleBuffer;
 let frameHandle;
 let attractorBuffer;
 let attractorPosition = { x: 0, y: 0 };
+let isDraggingAttractor = false;
 
 // GUI Setup
 const gui = new lil.GUI();
@@ -174,6 +175,16 @@ function rebuildParticles() {
         ctx.lineWidth = 2;
         ctx.stroke();
 
+        if (settings.attractorEnabled) {
+            ctx.beginPath();
+            ctx.arc(cx, cy, 18, 0, Math.PI * 2);
+            ctx.fillStyle = isDraggingAttractor ? 'rgba(255,255,100,0.7)' : 'rgba(255,255,100,0.4)';
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(255,255,100,0.8)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+
     }
 
 
@@ -273,14 +284,67 @@ setTimeout(() => {
     }, 500); // Disrupt for 0.5 seconds
 }, 1000); // Start 1 second after load
 
-function updateAttractorFromEvent(e) {
+function getMousePosInAttractorSpace(e) {
     const x = (e.clientX ?? e.touches?.[0]?.clientX ?? 0) / window.innerWidth;
     const y = (e.clientY ?? e.touches?.[0]?.clientY ?? 0) / window.innerHeight;
-    attractorPosition.x = x * 2 - 1;
-    attractorPosition.y = -(y * 2 - 1);
+    return {
+        x: x * 2 - 1,
+        y: -(y * 2 - 1)
+    };
 }
 
-window.addEventListener('mousemove', updateAttractorFromEvent);
-window.addEventListener('touchmove', updateAttractorFromEvent);
-console.log(attractorPosition);
-console.log(settings.attractorStrength, settings.attractorEnabled);
+// --- Attractor Dragging Events ---
+
+canvas.addEventListener('mousedown', (e) => {
+    if (!settings.attractorEnabled) return;
+    const mouse = getMousePosInAttractorSpace(e);
+    const dx = mouse.x - attractorPosition.x;
+    const dy = mouse.y - attractorPosition.y;
+    if (dx * dx + dy * dy < 0.08 * 0.08) { // 0.08 is the "hit" radius
+        isDraggingAttractor = true;
+    }
+});
+
+window.addEventListener('mousemove', (e) => {
+    if (isDraggingAttractor && settings.attractorEnabled) {
+        const mouse = getMousePosInAttractorSpace(e);
+        attractorPosition.x = mouse.x;
+        attractorPosition.y = mouse.y;
+    }
+});
+
+window.addEventListener('mouseup', () => {
+    isDraggingAttractor = false;
+});
+
+// Touch support
+canvas.addEventListener('touchstart', (e) => {
+    if (!settings.attractorEnabled) return;
+    const mouse = getMousePosInAttractorSpace(e);
+    const dx = mouse.x - attractorPosition.x;
+    const dy = mouse.y - attractorPosition.y;
+    if (dx * dx + dy * dy < 0.08 * 0.08) {
+        isDraggingAttractor = true;
+    }
+});
+window.addEventListener('touchmove', (e) => {
+    if (isDraggingAttractor && settings.attractorEnabled) {
+        const mouse = getMousePosInAttractorSpace(e);
+        attractorPosition.x = mouse.x;
+        attractorPosition.y = mouse.y;
+    }
+});
+window.addEventListener('touchend', () => {
+    isDraggingAttractor = false;
+});
+
+
+// function updateAttractorFromEvent(e) {
+    // const x = (e.clientX ?? e.touches?.[0]?.clientX ?? 0) / window.innerWidth;
+    // const y = (e.clientY ?? e.touches?.[0]?.clientY ?? 0) / window.innerHeight;
+    // attractorPosition.x = x * 2 - 1;
+    // attractorPosition.y = -(y * 2 - 1);
+// }
+
+// window.addEventListener('mousemove', updateAttractorFromEvent);
+// window.addEventListener('touchmove', updateAttractorFromEvent);
