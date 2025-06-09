@@ -13,8 +13,18 @@ struct Attractor {
   enabled: u32,
 };
 
+struct Disrupt {
+  isActive: f32,
+};
+
+struct Seed {
+  value: f32,
+};
+
 @group(0) @binding(0) var<storage, read_write> particles : array<Particle>;
 @group(0) @binding(1) var<uniform> attractor : Attractor;
+@group(0) @binding(2) var<uniform> disrupt: Disrupt;
+@group(0) @binding(3) var<uniform> seed: Seed;
 
 @compute @workgroup_size(64)
 fn main(@builtin(global_invocation_id) id : vec3<u32>) {
@@ -58,6 +68,15 @@ particles[index].vel = tangentialForce + particles[index].vel * 0.97;
       particles[index].vel = normalize(particles[index].vel) * maxSpeed;
     }
   }
+
+  if (disrupt.isActive > 0.5) {
+    // Add a more dynamic, seed-based random "kick" to velocity
+    let t = seed.value;
+    let kickMag = 0.15 + random(f32(index) * 7.77 + t) * 0.25;
+    let angle = random(f32(index) * 3.33 + t) * 6.2831853; // 2*PI
+    let kick = vec2<f32>(cos(angle), sin(angle)) * kickMag;
+    particles[index].vel += kick;
+}
 
   // Update position
   particles[index].pos += particles[index].vel;

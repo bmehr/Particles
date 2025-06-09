@@ -8,12 +8,16 @@ function randomLightColorHex() {
 
 const settings = {
     color: randomLightColorHex() ,
-    particleCount: 10000,
+    particleCount: 100000,
     attractorStrength: 0.0002,
     attractorEnabled: false,
     showUI: true,
 };
 
+let globalSeed = Math.random() * 10000;
+let seedBuffer;
+let disruptActive = false;
+let disruptBuffer;
 let canvas, overlay, ctx;
 let device, context, format;
 let computePipeline, renderPipeline;
@@ -92,6 +96,8 @@ function rebuildParticles() {
         entries: [
             { binding: 0, resource: { buffer: particleBuffer } },
             { binding: 1, resource: { buffer: attractorBuffer } },
+            { binding: 2, resource: { buffer: disruptBuffer } },
+            { binding: 3, resource: { buffer: seedBuffer } },
         ],
     });
 
@@ -123,6 +129,9 @@ function rebuildParticles() {
         const color = hexToRGB(settings.color);
         const uniformData = new Float32Array([color.r, color.g, color.b, 1.0]);
         device.queue.writeBuffer(uniformBuffer, 0, uniformData.buffer);
+
+        const disruptUniform = new Float32Array([disruptActive ? 1 : 0]);
+        device.queue.writeBuffer(disruptBuffer, 0, disruptUniform.buffer);
 
         const computePass = commandEncoder.beginComputePass();
         computePass.setPipeline(computePipeline);
@@ -205,6 +214,8 @@ async function initWebGPU() {
         entries: [
             { binding: 0, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'storage' } },
             { binding: 1, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'uniform' } },
+            { binding: 2, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'uniform' } },
+            { binding: 3, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'uniform' } }, // seed
         ],
     });
 
@@ -225,6 +236,17 @@ async function initWebGPU() {
         usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     });
 
+    disruptBuffer = device.createBuffer({
+        size: 4, // 1 float: active (0 or 1)
+        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+    });
+
+    seedBuffer = device.createBuffer({
+        size: 4,
+        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+    });
+    device.queue.writeBuffer(seedBuffer, 0, new Float32Array([globalSeed]));
+
     computePipeline = device.createComputePipeline({
         layout: device.createPipelineLayout({ bindGroupLayouts: [computeBindGroupLayout] }),
         compute: { module: computeModule, entryPoint: "main" },
@@ -243,6 +265,13 @@ async function initWebGPU() {
 }
 
 initWebGPU();
+
+setTimeout(() => {
+    disruptActive = true;
+    setTimeout(() => {
+        disruptActive = false;
+    }, 500); // Disrupt for 0.5 seconds
+}, 1000); // Start 1 second after load
 
 function updateAttractorFromEvent(e) {
     const x = (e.clientX ?? e.touches?.[0]?.clientX ?? 0) / window.innerWidth;
