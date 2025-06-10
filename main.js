@@ -14,7 +14,7 @@ const settings = {
     showUI: true,
 };
 
-let globalSeed = Math.random() * 10000;
+let globalSeed = (Math.random() + performance.now()) * 10000;
 let seedBuffer;
 let disruptActive = false;
 let disruptBuffer;
@@ -27,8 +27,11 @@ let uniformBuffer;
 let particleBuffer;
 let frameHandle;
 let attractorBuffer;
-let attractorPosition = { x: 0, y: 0 };
-let isDraggingAttractor = false;
+let attractorPositions = [
+    { x: -0.5, y: 0 }, // Attractor 1 (left)
+    { x: 0.5, y: 0 }   // Attractor 2 (right)
+];
+let draggingAttractorIndex = null; // null or 0/1
 
 // GUI Setup
 const gui = new lil.GUI();
@@ -113,16 +116,16 @@ function rebuildParticles() {
     function frame() {
         const commandEncoder = device.createCommandEncoder();
 
-        const buffer = new ArrayBuffer(16);
+        const buffer = new ArrayBuffer(32);
         const floatView = new Float32Array(buffer);
         const uintView = new Uint32Array(buffer);
 
-
-        floatView[0] = attractorPosition.x;
-        floatView[1] = attractorPosition.y;
-        floatView[2] = settings.attractorStrength;
-        uintView[3] = settings.attractorEnabled ? 1 : 0;
-
+        for (let i = 0; i < 2; ++i) {
+            floatView[i * 4 + 0] = attractorPositions[i].x;
+            floatView[i * 4 + 1] = attractorPositions[i].y;
+            floatView[i * 4 + 2] = settings.attractorStrength;
+            uintView[i * 4 + 3] = settings.attractorEnabled ? 1 : 0;
+        }
 
         device.queue.writeBuffer(attractorBuffer, 0, buffer);
 
@@ -164,27 +167,33 @@ function rebuildParticles() {
         ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
         ctx.fillRect(0, 0, overlay.width, overlay.height);
 
-        // Swirl ring effect
-        const cx = (attractorPosition.x * 0.5 + 0.5) * overlay.width;
-        const cy = (-attractorPosition.y * 0.5 + 0.5) * overlay.height;
-        const pulse = Math.sin(performance.now() * 0.005) * 5 + 25;
-
-        ctx.beginPath();
-        ctx.arc(cx, cy, pulse, 0, Math.PI * 2);
-        ctx.strokeStyle = 'rgba(255, 255, 100, 0.3)';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-
-        if (settings.attractorEnabled) {
+        // Swirl ring effect for each attractor
+        for (let i = 0; i < attractorPositions.length; ++i) {
+            const pos = attractorPositions[i];
+            const cx = (pos.x * 0.5 + 0.5) * overlay.width;
+            const cy = (-pos.y * 0.5 + 0.5) * overlay.height;
+            const pulse = Math.sin(performance.now() * 0.005 + i) * 5 + 25;
             ctx.beginPath();
-            ctx.arc(cx, cy, 18, 0, Math.PI * 2);
-            ctx.fillStyle = isDraggingAttractor ? 'rgba(255,255,100,0.7)' : 'rgba(255,255,100,0.4)';
-            ctx.fill();
-            ctx.strokeStyle = 'rgba(255,255,100,0.8)';
+            ctx.arc(cx, cy, pulse, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(255, 255, 100, 0.3)';
             ctx.lineWidth = 2;
             ctx.stroke();
         }
 
+        if (settings.attractorEnabled) {
+            for (let i = 0; i < attractorPositions.length; ++i) {
+                const pos = attractorPositions[i];
+                const cx = (pos.x * 0.5 + 0.5) * overlay.width;
+                const cy = (-pos.y * 0.5 + 0.5) * overlay.height;
+                ctx.beginPath();
+                ctx.arc(cx, cy, 18, 0, Math.PI * 2);
+                ctx.fillStyle = (draggingAttractorIndex === i) ? 'rgba(255,255,100,0.7)' : 'rgba(255,255,100,0.4)';
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(255,255,100,0.8)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+        }
     }
 
 
@@ -243,7 +252,7 @@ async function initWebGPU() {
     });
 
     attractorBuffer = device.createBuffer({
-        size: 16, // 4 floats * 4 bytes
+        size: 32, // 2 attractors * 16 bytes each
         usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     });
 
@@ -295,47 +304,56 @@ function getMousePosInAttractorSpace(e) {
 
 // --- Attractor Dragging Events ---
 
+function getClosestAttractorIndex(mouse) {
+    let minDist = Infinity;
+    let idx = null;
+    for (let i = 0; i < attractorPositions.length; ++i) {
+        const dx = mouse.x - attractorPositions[i].x;
+        const dy = mouse.y - attractorPositions[i].y;
+        const dist = dx * dx + dy * dy;
+        if (dist < 0.08 * 0.08 && dist < minDist) {
+            minDist = dist;
+            idx = i;
+        }
+    }
+    return idx;
+}
+
 canvas.addEventListener('mousedown', (e) => {
     if (!settings.attractorEnabled) return;
     const mouse = getMousePosInAttractorSpace(e);
-    const dx = mouse.x - attractorPosition.x;
-    const dy = mouse.y - attractorPosition.y;
-    if (dx * dx + dy * dy < 0.08 * 0.08) { // 0.08 is the "hit" radius
-        isDraggingAttractor = true;
-    }
+    const idx = getClosestAttractorIndex(mouse);
+    if (idx !== null) draggingAttractorIndex = idx;
 });
 
 window.addEventListener('mousemove', (e) => {
-    if (isDraggingAttractor && settings.attractorEnabled) {
+    if (draggingAttractorIndex !== null && settings.attractorEnabled) {
         const mouse = getMousePosInAttractorSpace(e);
-        attractorPosition.x = mouse.x;
-        attractorPosition.y = mouse.y;
+        attractorPositions[draggingAttractorIndex].x = mouse.x;
+        attractorPositions[draggingAttractorIndex].y = mouse.y;
     }
 });
 
 window.addEventListener('mouseup', () => {
-    isDraggingAttractor = false;
+    draggingAttractorIndex = null;
 });
 
 // Touch support
 canvas.addEventListener('touchstart', (e) => {
     if (!settings.attractorEnabled) return;
     const mouse = getMousePosInAttractorSpace(e);
-    const dx = mouse.x - attractorPosition.x;
-    const dy = mouse.y - attractorPosition.y;
-    if (dx * dx + dy * dy < 0.08 * 0.08) {
-        isDraggingAttractor = true;
-    }
+    const idx = getClosestAttractorIndex(mouse);
+    if (idx !== null) draggingAttractorIndex = idx;
 });
 window.addEventListener('touchmove', (e) => {
-    if (isDraggingAttractor && settings.attractorEnabled) {
+    if (draggingAttractorIndex !== null && settings.attractorEnabled) {
         const mouse = getMousePosInAttractorSpace(e);
-        attractorPosition.x = mouse.x;
-        attractorPosition.y = mouse.y;
+        attractorPositions[draggingAttractorIndex].x = mouse.x;
+        attractorPositions[draggingAttractorIndex].y = mouse.y;
     }
 });
 window.addEventListener('touchend', () => {
-    isDraggingAttractor = false;
+    draggingAttractorIndex = null;
 });
 
 
