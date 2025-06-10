@@ -9,7 +9,8 @@ function randomLightColorHex() {
 const settings = {
     color: randomLightColorHex() ,
     particleCount: 100000,
-    attractorStrength: 0.0002,
+    attractorStrength: 0.05,
+    attractorInfluenceRadius: 0.01,
     attractorEnabled: false,
     showUI: true,
 };
@@ -32,6 +33,7 @@ let attractorPositions = [
     { x: 0.5, y: 0 }   // Attractor 2 (right)
 ];
 let draggingAttractorIndex = null; // null or 0/1
+let attractorRadiusBuffer;
 
 // GUI Setup
 const gui = new lil.GUI();
@@ -41,7 +43,8 @@ gui.add(settings, 'particleCount', 100, 200000).step(100).name('Count').onChange
     rebuildParticles();
 });
 gui.add(settings, 'attractorEnabled').name('Enable Attractor');
-// gui.add(settings, 'attractorStrength', 0.00001, 0.01).step(0.00001).name('Attractor Strength');
+gui.add(settings, 'attractorStrength', 0.00001, 0.2).step(0.00001).name('Attractor Strength');
+gui.add(settings, 'attractorInfluenceRadius', 0.01, 1.0).step(0.01).name('Attractor Radius');
 // gui.add(settings, 'showUI').name('Show/Hide').onChange(v => v ? gui.show() : gui.hide());
 
 function resizeCanvases() {
@@ -102,6 +105,7 @@ function rebuildParticles() {
             { binding: 1, resource: { buffer: attractorBuffer } },
             { binding: 2, resource: { buffer: disruptBuffer } },
             { binding: 3, resource: { buffer: seedBuffer } },
+            { binding: 5, resource: { buffer: attractorRadiusBuffer } },
         ],
     });
 
@@ -136,6 +140,8 @@ function rebuildParticles() {
 
         const disruptUniform = new Float32Array([disruptActive ? 1 : 0]);
         device.queue.writeBuffer(disruptBuffer, 0, disruptUniform.buffer);
+
+        device.queue.writeBuffer(attractorRadiusBuffer, 0, new Float32Array([settings.attractorInfluenceRadius]));
 
         const computePass = commandEncoder.beginComputePass();
         computePass.setPipeline(computePipeline);
@@ -235,7 +241,8 @@ async function initWebGPU() {
             { binding: 0, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'storage' } },
             { binding: 1, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'uniform' } },
             { binding: 2, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'uniform' } },
-            { binding: 3, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'uniform' } }, // seed
+            { binding: 3, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'uniform' } },
+            { binding: 5, visibility: GPUShaderStage.COMPUTE, buffer: { type: 'uniform' } },// seed
         ],
     });
 
@@ -266,6 +273,11 @@ async function initWebGPU() {
         usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     });
     device.queue.writeBuffer(seedBuffer, 0, new Float32Array([globalSeed]));
+
+    attractorRadiusBuffer = device.createBuffer({
+        size: 4,
+        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+    });
 
     computePipeline = device.createComputePipeline({
         layout: device.createPipelineLayout({ bindGroupLayouts: [computeBindGroupLayout] }),
